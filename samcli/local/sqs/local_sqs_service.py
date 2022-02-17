@@ -13,6 +13,7 @@ from time import sleep
 from dataclasses import dataclass
 from typing import List, Dict, Callable, Optional, Any
 from pyhocon.converter import HOCONConverter  # type: ignore
+from botocore.exceptions import ConnectionClosedError
 
 import boto3
 import pyhocon  # type: ignore
@@ -146,12 +147,20 @@ class SqsResource:
 class LocalSqsService:
     def __init__(self, invoke_context: InvokeContext):
         # Emulate Lambda SQS event triggers if the CloudFormation template defines them.
+        self._queue_list = None
         self._elastic_mq_container = None
         self._cwd = invoke_context.get_cwd()
         self._docker_network = invoke_context.get_docker_network()
         self._stderr = invoke_context.stderr
         self._lambda_runner = invoke_context.get_local_lambda_runner(containers_mode=ContainersMode.COLD)
         self._sqs_resource_map = self._get_sqs_resource_map(stacks=invoke_context.stacks)
+        self._sqs_client = boto3.resource(
+            "sqs",
+            endpoint_url="http://127.0.0.1:9324",
+            region_name="local",
+            aws_access_key_id="none",
+            aws_secret_access_key="none",
+        )
 
         if not self._sqs_resource_map:
             LOG.info("No SQS resources found. Skipping SQS Emulation.")
@@ -162,7 +171,22 @@ class LocalSqsService:
         self._docker_client = docker.from_env()
         self._elastic_mq_config = self._write_elastic_mq_config()
         self._start_elasticmq()
+
+        if not self._queue_list:
+            LOG.error("No queues found in ElasticMQ Service!")
+            self._stop_elasticmq()
+            return
+
         self._start_poller()
+
+    def _wait_queue_list(self):
+        LOG.info("Waiting for ElasticMQ Service Queues.")
+        # Get queues from elasticmq service.
+        try:
+            self._queue_list = list(self._sqs_client.queues.all())
+        except ConnectionClosedError:
+            sleep(1)
+            self._wait_queue_list()
 
     def _stop_elasticmq(self):
         try:
@@ -183,6 +207,8 @@ class LocalSqsService:
             volumes={self._elastic_mq_config: {"bind": "/opt/elasticmq.conf", "mode": "ro"}},
         )
 
+        self._wait_queue_list()
+
         def signal_handler(signum, sigframe):
             LOG.info("Stopping ElasticMQ Service.")
             self._stop_elasticmq()
@@ -192,19 +218,8 @@ class LocalSqsService:
         signal.signal(signal.SIGINT, signal_handler)
 
     def _init_poller(self):
-        sqs_client = boto3.resource(
-            "sqs",
-            endpoint_url="http://127.0.0.1:9324",
-            region_name="local",
-            aws_access_key_id="none",
-            aws_secret_access_key="none",
-        )
-
-        # Get queues from elasticmq service.
-        queue_list = list(sqs_client.queues.all())
-
         # Attach queues from elasticmq service to SqsResource class instances.
-        for queue in queue_list:
+        for queue in self._queue_list:
             queue_name = queue.attributes["QueueArn"].split(":")[-1]
             self._sqs_resource_map[queue_name].queue = queue
 
