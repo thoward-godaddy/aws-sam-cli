@@ -57,7 +57,7 @@ setup(
     python_requires=">=3.6, <=4.0, !=4.0",
     entry_points={"console_scripts": ["{}=samcli.cli.main:cli".format(cmd_name)]},
     install_requires=read_requirements("base.txt"),
-    # extras_require={"pre-dev": read_requirements("pre-dev.txt"), "dev": read_requirements("dev.txt")},
+    extras_require={"pre-dev": read_requirements("pre-dev.txt"), "dev": read_requirements("dev.txt")},
     include_package_data=True,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
