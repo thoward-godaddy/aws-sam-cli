@@ -364,20 +364,20 @@ class InvokeContext:
         return self._local_lambda_runner
 
     def get_local_lambda_runner(self, containers_mode: ContainersMode) -> LocalLambdaRunner:
-        if self._lambda_runtimes:
-            return LocalLambdaRunner(
-                local_runtime=self._lambda_runtimes[containers_mode],
-                function_provider=self._function_provider,
-                cwd=self.get_cwd(),
-                aws_profile=self._aws_profile,
-                aws_region=self._aws_region,
-                env_vars_values=self._env_vars_value,
-                debug_context=self._debug_context,
-                container_host=self._container_host,
-                container_host_interface=self._container_host_interface,
-            )
+        if not self._lambda_runtimes:
+            self.lambda_runtime
 
-        raise Exception("%s _lambda_runtimes is not initialized!" % self.__class__.__name__)
+        return LocalLambdaRunner(
+            local_runtime=self._lambda_runtimes[containers_mode],
+            function_provider=self._function_provider,
+            cwd=self.get_cwd(),
+            aws_profile=self._aws_profile,
+            aws_region=self._aws_region,
+            env_vars_values=self._env_vars_value,
+            debug_context=self._debug_context,
+            container_host=self._container_host,
+            container_host_interface=self._container_host_interface,
+        )
 
     @property
     def stdout(self) -> StreamWriter:
