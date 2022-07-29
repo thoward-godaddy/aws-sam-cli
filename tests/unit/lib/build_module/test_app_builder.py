@@ -327,7 +327,9 @@ class TestApplicationBuilder_build(TestCase):
         build_graph_mock = Mock()
         get_build_graph_mock = Mock(return_value=build_graph_mock)
 
-        builder = ApplicationBuilder(Mock(), "builddir", "basedir", "cachedir", stream_writer=StreamWriter(sys.stderr))
+        builder = ApplicationBuilder(
+            MagicMock(), "builddir", "basedir", "cachedir", stream_writer=StreamWriter(sys.stderr)
+        )
         builder._get_build_graph = get_build_graph_mock
 
         result = builder.build().artifacts
@@ -347,7 +349,7 @@ class TestApplicationBuilder_build(TestCase):
         get_build_graph_mock = Mock(return_value=build_graph_mock)
 
         builder = ApplicationBuilder(
-            Mock(), "builddir", "basedir", "cachedir", cached=True, stream_writer=StreamWriter(sys.stderr)
+            MagicMock(), "builddir", "basedir", "cachedir", cached=True, stream_writer=StreamWriter(sys.stderr)
         )
         builder._get_build_graph = get_build_graph_mock
 
@@ -365,7 +367,7 @@ class TestApplicationBuilder_build(TestCase):
         get_build_graph_mock = Mock(return_value=build_graph_mock)
 
         builder = ApplicationBuilder(
-            Mock(), "builddir", "basedir", "cachedir", parallel=True, stream_writer=StreamWriter(sys.stderr)
+            MagicMock(), "builddir", "basedir", "cachedir", parallel=True, stream_writer=StreamWriter(sys.stderr)
         )
         builder._get_build_graph = get_build_graph_mock
 
@@ -390,7 +392,7 @@ class TestApplicationBuilder_build(TestCase):
         get_build_graph_mock = Mock(return_value=build_graph_mock)
 
         builder = ApplicationBuilder(
-            Mock(),
+            MagicMock(),
             "builddir",
             "basedir",
             "cachedir",
@@ -434,6 +436,7 @@ class TestApplicationBuilder_build(TestCase):
             inlinecode=None,
             architectures=[X86_64, ARM64],
             stack_path="",
+            function_url_config=None,
         )
 
         resources_to_build_collector = ResourcesToBuildCollector()
@@ -1142,6 +1145,7 @@ class TestApplicationBuilder_build_lambda_image_function(TestCase):
                 buildargs={"a": "b", "SAM_BUILD_MODE": "debug"},
                 decode=True,
                 platform="linux/amd64",
+                rm=True,
             ),
         )
 
@@ -1170,6 +1174,7 @@ class TestApplicationBuilder_build_lambda_image_function(TestCase):
                 decode=True,
                 target="stage",
                 platform="linux/amd64",
+                rm=True,
             ),
         )
 
@@ -1837,3 +1842,34 @@ class TestApplicationBuilder_get_build_options(TestCase):
     def test_invalid_metadata_cases(self, metadata, expected_output):
         options = ApplicationBuilder._get_build_options("Function", "Node.js", "handler", "npm-esbuild", metadata)
         self.assertEqual(options, expected_output)
+
+    @parameterized.expand(
+        [
+            ("go", "", {"artifact_executable_name": "app.handler"}),
+            ("python", "", None),
+            ("nodejs", "npm", {"use_npm_ci": True}),
+            ("esbuild", "npm-esbuild", {"entry_points": ["app"], "use_npm_ci": True}),
+            ("provided", "", {"build_logical_id": "Function"}),
+        ]
+    )
+    def test_get_options_various_languages_dependency_managers(self, language, dependency_manager, expected_options):
+        build_properties = {"UseNpmCi": True}
+        metadata = {"BuildProperties": build_properties}
+        options = ApplicationBuilder._get_build_options(
+            "Function", language, "app.handler", dependency_manager, metadata
+        )
+        self.assertEqual(options, expected_options)
+
+    @parameterized.expand(
+        [
+            (None, "nodejs", "npm", {"use_npm_ci": False}),
+            ({"BuildProperties": {}}, "nodejs", "npm", {"use_npm_ci": False}),
+            (None, "esbuild", "npm-esbuild", None),
+            ({"BuildProperties": {}}, "esbuild", "npm-esbuild", {"entry_points": ["app"]}),
+        ]
+    )
+    def test_nodejs_metadata_not_defined(self, metadata, language, dependency_manager, expected_options):
+        options = ApplicationBuilder._get_build_options(
+            "Function", language, "app.handler", dependency_manager, metadata
+        )
+        self.assertEqual(options, expected_options)

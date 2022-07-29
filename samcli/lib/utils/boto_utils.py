@@ -4,9 +4,9 @@ This module contains utility functions for boto3 library
 from typing import Any, Optional
 
 from boto3 import Session
-from typing_extensions import Protocol
-
 from botocore.config import Config
+from botocore.exceptions import ClientError
+from typing_extensions import Protocol
 
 from samcli import __version__
 from samcli.cli.global_config import GlobalConfig
@@ -38,7 +38,7 @@ def get_boto_config_with_user_agent(**kwargs) -> Config:
 # Type definition of following boto providers, which is equal to Callable[[str], Any]
 class BotoProviderType(Protocol):
     def __call__(self, service_name: str) -> Any:
-        ...
+        ...  # pragma: no cover
 
 
 def get_boto_client_provider_from_session_with_config(session: Session, **kwargs) -> BotoProviderType:
@@ -85,7 +85,7 @@ def get_boto_client_provider_with_config(
         A callable function which will return a boto client
     """
     return get_boto_client_provider_from_session_with_config(
-        Session(region_name=region, profile_name=profile), **kwargs  # type: ignore
+        Session(region_name=region, profile_name=profile), **kwargs
     )
 
 
@@ -132,7 +132,11 @@ def get_boto_resource_provider_with_config(
     -------
         A callable function which will return a boto resource
     """
-    # ignore typing because mypy tries to assert client_name with a valid service name
     return get_boto_resource_provider_from_session_with_config(
-        Session(region_name=region, profile_name=profile), **kwargs  # type: ignore
+        Session(region_name=region, profile_name=profile), **kwargs
     )
+
+
+def get_client_error_code(client_error: ClientError) -> Optional[str]:
+    """Extracts error code from boto ClientError"""
+    return client_error.response.get("Error", {}).get("Code")

@@ -201,6 +201,7 @@ class ApplicationBuilder:
                         self._cache_dir,
                         self._manifest_path_override,
                         self._is_building_specific_resource,
+                        bool(self._container_manager),
                     ),
                 )
             else:
@@ -214,6 +215,7 @@ class ApplicationBuilder:
                 self._cache_dir,
                 self._manifest_path_override,
                 self._is_building_specific_resource,
+                bool(self._container_manager),
             )
 
         return ApplicationBuildResult(build_graph, build_strategy.build())
@@ -413,6 +415,7 @@ class ApplicationBuilder:
             "buildargs": docker_build_args,
             "decode": True,
             "platform": get_docker_platform(architecture),
+            "rm": True,
         }
         if docker_build_target:
             build_args["target"] = cast(str, docker_build_target)
@@ -695,9 +698,11 @@ class ApplicationBuilder:
         dict
             Dictionary that represents the options to pass to the builder workflow or None if options are not needed
         """
+        build_props = {}
+        if metadata and isinstance(metadata, dict):
+            build_props = metadata.get(BUILD_PROPERTIES, {})
 
         if metadata and dependency_manager and dependency_manager == "npm-esbuild":
-            build_props = metadata.get(BUILD_PROPERTIES, {})
             # Esbuild takes an array of entry points from which to start bundling
             # as a required argument. This corresponds to the lambda function handler.
             normalized_build_props = ResourceMetadataNormalizer.normalize_build_properties(build_props)
@@ -709,6 +714,7 @@ class ApplicationBuilder:
         _build_options: Dict = {
             "go": {"artifact_executable_name": handler},
             "provided": {"build_logical_id": function_name},
+            "nodejs": {"use_npm_ci": build_props.get("UseNpmCi", False)},
         }
         return _build_options.get(language, None)
 
