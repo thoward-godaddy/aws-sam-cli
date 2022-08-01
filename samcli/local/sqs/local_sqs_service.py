@@ -177,7 +177,7 @@ class LocalSqsService:
             self._stop_elasticmq()
             return
 
-        self._start_poller()
+        self._start_poller()  # type: ignore
 
     def _wait_queue_list(self):
         LOG.info("Waiting for ElasticMQ Service Queues.")

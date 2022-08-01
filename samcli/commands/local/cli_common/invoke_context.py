@@ -384,10 +384,10 @@ class InvokeContext:
 
     def get_local_lambda_runner(self, containers_mode: ContainersMode) -> LocalLambdaRunner:
         if not self._lambda_runtimes:
-            self.lambda_runtime
+            self.lambda_runtime  # pylint: disable=W0104
 
         return LocalLambdaRunner(
-            local_runtime=self._lambda_runtimes[containers_mode],
+            local_runtime=self._lambda_runtimes[containers_mode],  # type: ignore
             function_provider=self._function_provider,
             cwd=self.get_cwd(),
             aws_profile=self._aws_profile,
