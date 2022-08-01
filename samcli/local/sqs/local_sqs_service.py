@@ -20,7 +20,7 @@ import pyhocon  # type: ignore
 import docker
 import docker.errors
 
-from samcli.commands.local.cli_common.invoke_context import InvokeContext, ContainersMode
+from samcli.commands.local.cli_common.invoke_context import InvokeContext
 from samcli.commands.local.lib.local_lambda import LocalLambdaRunner
 from samcli.lib.providers.provider import Stack
 
@@ -152,6 +152,8 @@ class LocalSqsService:
         self._cwd = invoke_context.get_cwd()
         self._docker_network = invoke_context.get_docker_network()
         self._stderr = invoke_context.stderr
+        # No longer needed:
+        # https://github.com/aws/aws-sam-cli/pull/4089
         # self._lambda_runner = invoke_context.get_local_lambda_runner(containers_mode=ContainersMode.COLD)
         self._lambda_runner = invoke_context.local_lambda_runner
         self._sqs_resource_map = self._get_sqs_resource_map(stacks=invoke_context.stacks)
@@ -167,8 +169,6 @@ class LocalSqsService:
             LOG.info("No SQS resources found. Skipping SQS Emulation.")
             return
 
-        # Do not use WARM lambda runtime for event triggers.
-        # Can be reconsidered once WARM implements TTL and container lambda execution state is tracked.
         self._docker_client = docker.from_env()
         self._elastic_mq_config = self._write_elastic_mq_config()
         self._start_elasticmq()
