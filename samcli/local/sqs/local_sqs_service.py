@@ -152,7 +152,8 @@ class LocalSqsService:
         self._cwd = invoke_context.get_cwd()
         self._docker_network = invoke_context.get_docker_network()
         self._stderr = invoke_context.stderr
-        self._lambda_runner = invoke_context.get_local_lambda_runner(containers_mode=ContainersMode.COLD)
+        # self._lambda_runner = invoke_context.get_local_lambda_runner(containers_mode=ContainersMode.COLD)
+        self._lambda_runner = invoke_context.local_lambda_runner
         self._sqs_resource_map = self._get_sqs_resource_map(stacks=invoke_context.stacks)
         self._sqs_client = boto3.resource(
             "sqs",
