@@ -334,10 +334,9 @@ class Deployer:
         :param changeset_id: ID of the changeset
         :param stack_name: Name or ID of the stack
         :param disable_rollback: Preserve the state of previously provisioned resources when an operation fails.
-        :return: Response from execute-change-set call
         """
         try:
-            return self._client.execute_change_set(
+            self._client.execute_change_set(
                 ChangeSetName=changeset_id, StackName=stack_name, DisableRollback=disable_rollback
             )
         except botocore.exceptions.ClientError as ex:
@@ -464,7 +463,7 @@ class Deployer:
         )
         sys.stdout.flush()
 
-        self.describe_stack_events(stack_name, self.get_last_event_time(stack_name))
+        self.describe_stack_events(stack_name, time.time() * 1000)
 
         # Pick the right waiter
         if stack_operation == "CREATE":
